@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kyrios", "Kyrios\Kyrios.csproj", "{60F5B194-72E6-47BA-BB76-4CFB55345A9A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "Sandbox\Sandbox.csproj", "{8AA325D2-6239-4BC4-AB28-79A1E4D0C4ED}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{60F5B194-72E6-47BA-BB76-4CFB55345A9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60F5B194-72E6-47BA-BB76-4CFB55345A9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60F5B194-72E6-47BA-BB76-4CFB55345A9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60F5B194-72E6-47BA-BB76-4CFB55345A9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8AA325D2-6239-4BC4-AB28-79A1E4D0C4ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8AA325D2-6239-4BC4-AB28-79A1E4D0C4ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8AA325D2-6239-4BC4-AB28-79A1E4D0C4ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8AA325D2-6239-4BC4-AB28-79A1E4D0C4ED}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {918601FD-DF41-47C9-8A7F-C9579A5FD2FC}
+	EndGlobalSection
+EndGlobal
