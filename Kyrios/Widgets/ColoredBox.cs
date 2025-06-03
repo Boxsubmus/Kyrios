@@ -4,11 +4,14 @@ namespace Kyrios.Widgets;
 
 public class ColoredBox : Widget
 {
-    private SKColor m_color;
+    private SKColor m_baseColor;
+    private SKColor m_currentColor;
 
     public ColoredBox(Widget? parent, SKColor color, int width, int height) : base(parent)
     {
-        m_color = color;
+        m_baseColor = color;
+        m_currentColor = color;
+
         Resize(width, height);
     }
 
@@ -18,9 +21,19 @@ public class ColoredBox : Widget
 
         using var paint = new SKPaint
         {
-            Color = m_color,
+            Color = m_currentColor,
             IsAntialias = true
         };
-        canvas.DrawRoundRect(new SKRoundRect(new SKRect(0, 0, Width, Height), 8f), paint);
+        canvas.DrawRoundRect(new SKRoundRect(new SKRect(0, 0, Width, Height), 16), paint);
+    }
+
+    public override void OnMouseEnter()
+    {
+        m_currentColor = SKColors.Yellow;
+    }
+
+    public override void OnMouseLeave()
+    {
+        m_currentColor = m_baseColor;
     }
 }

@@ -2,9 +2,11 @@
 
 namespace Kyrios.Widgets;
 
-public class MainWindow : Window
+public class MainWindow : Widget
 {
-    public MainWindow(Widget? parent, string title) : base(parent, 800, 600, "MainWindow")
+    public MainWindow(int width = 100, int height = 100) : base()
     {
+        Width = width;
+        Height = height;
     }
 }

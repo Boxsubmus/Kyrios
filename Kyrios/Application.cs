@@ -1,11 +1,11 @@
 ﻿using GLFW;
-using Window = Kyrios.Widgets.Window;
+using Kyrios.Widgets;
 
 namespace Kyrios;
 
 public class Application : IDisposable
 {
-    private readonly List<Window> m_windows = [];
+    private readonly List<Widget> m_topLevelWidgets = [];
 
     public Application()
     {
@@ -18,28 +18,31 @@ public class Application : IDisposable
         Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
     }
 
-    public void Run(params Window[] mainWindows)
+    public void Run(params Widget[] widgets)
     {
-        m_windows.AddRange(mainWindows);
+        foreach (var w in widgets)
+        {
+            if (w.Parent == null)
+            {
+                m_topLevelWidgets.Add(w);
+                w.InitializeIfTopLevel();
+            }
+        }
 
-        foreach (var win in m_windows)
-            win.Initialize();
-
-        while (m_windows.Count > 0)
+        while (m_topLevelWidgets.Count > 0)
         {
             Glfw.PollEvents();
 
-            // Use a copy of the list to avoid modifying while iterating
-            foreach (var win in m_windows.ToArray())
+            foreach (var w in m_topLevelWidgets.ToArray())
             {
-                if (win.ShouldClose())
+                if (w.ShouldClose())
                 {
-                    win.Shutdown();
-                    m_windows.Remove(win);
+                    w.Shutdown();
+                    m_topLevelWidgets.Remove(w);
                 }
                 else
                 {
-                    win.UpdateAndRender();
+                    w.UpdateAndRender();
                 }
             }
         }
