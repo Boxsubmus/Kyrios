@@ -9,8 +9,10 @@ public static class Program
     {
         using var app = new Application();
 
+        Cache.Init();
+
         var windows = new List<MainWindow>();
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 1; i++)
         {
             var mainWindow = new TestWindow(i);
             mainWindow.Show();

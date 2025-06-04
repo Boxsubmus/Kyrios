@@ -8,7 +8,6 @@ internal class TestWindow : MainWindow
     int mouseX;
     int mouseY;
 
-    private SKTypeface m_defaultTypeface;
 
     private int index;
 
@@ -16,9 +15,12 @@ internal class TestWindow : MainWindow
     {
         index = i;
 
-        m_defaultTypeface = SKTypeface.FromFamilyName("Segoe UI");
-
-        AddChild(new Checkbox(), 8, 8);
+        AddChild(
+            new Checkbox
+            {
+                Label = "Selection"
+            },
+            8, 8);
     }
 
     int frame = 0;
@@ -48,7 +50,7 @@ internal class TestWindow : MainWindow
             Edging = SKFontEdging.Antialias,
             Subpixel = true,
             Hinting = SKFontHinting.Normal,
-            Typeface = m_defaultTypeface,
+            Typeface = Cache.DefaultTypeFace,
             Size = 13
         };
 

@@ -1,4 +1,5 @@
 ﻿using SkiaSharp;
+using System.Threading;
 
 namespace Kyrios.Widgets;
 
@@ -21,6 +22,7 @@ public class Checkbox : Widget
         var boxRect = new SKRect(2, 2, 2 + boxSize, 2 + boxSize);
 
         // Draw checkbox background
+        /*
         using var boxPaint = new SKPaint
         {
             Color = m_hovered ? SKColors.LightGray : SKColors.White,
@@ -28,23 +30,25 @@ public class Checkbox : Widget
             IsAntialias = true
         };
         canvas.DrawRect(boxRect, boxPaint);
+        */
+
 
         // Draw border
         using var borderPaint = new SKPaint
         {
-            Color = SKColors.Black,
+            Color = SKColors.White,
             Style = SKPaintStyle.Stroke,
             StrokeWidth = 1,
-            IsAntialias = true
+            IsAntialias = true,
         };
-        canvas.DrawRect(boxRect, borderPaint);
+        canvas.DrawRoundRect(boxRect, 1, 1, borderPaint);
 
         // Draw checkmark if checked
         if (IsChecked)
         {
             using var checkPaint = new SKPaint
             {
-                Color = SKColors.Black,
+                Color = SKColors.White,
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 2,
                 IsAntialias = true
@@ -56,14 +60,19 @@ public class Checkbox : Widget
         }
 
         // Draw label
-        using var textPaint = new SKPaint
+        using var skFont = new SKFont
         {
-            Color = SKColors.White,
-            IsAntialias = true,
-            TextSize = 14,
-            Typeface = SKTypeface.FromFamilyName("Segoe UI")
+            Edging = SKFontEdging.Antialias,
+            Subpixel = true,
+            Hinting = SKFontHinting.Normal,
+            Typeface = SKTypeface.Default,
+            Size = 13
         };
-        canvas.DrawText(Label, boxRect.Right + 8, Height / 2 + textPaint.TextSize / 2 - 4, textPaint);
+        using var labelPaint = new SKPaint
+        {
+            Color = SKColors.White
+        };
+        canvas.DrawText(Label, new SKPoint(boxRect.Right + 8, (Height / 2) + (skFont.Size / 2) - 3), skFont, labelPaint);
     }
 
     public override void OnMouseEnter()
