@@ -22,11 +22,10 @@ public class Application : IDisposable
     {
         foreach (var w in widgets)
         {
-            if (w.Parent == null)
-            {
-                m_topLevelWidgets.Add(w);
-                w.InitializeIfTopLevel();
-            }
+            if (w.Parent != null) continue;
+            
+            m_topLevelWidgets.Add(w);
+            w.InitializeIfTopLevel();
         }
 
         while (m_topLevelWidgets.Count > 0)
@@ -37,12 +36,13 @@ public class Application : IDisposable
             {
                 if (w.ShouldClose())
                 {
-                    w.Shutdown();
+                    w.Dispose();
                     m_topLevelWidgets.Remove(w);
                 }
                 else
                 {
                     w.UpdateAndRender();
+                    // Glfw.WaitEvents(); // <- This tells Glfw to wait until the user does something to actually update
                 }
             }
         }
@@ -50,8 +50,12 @@ public class Application : IDisposable
 
     public void Dispose()
     {
-        GC.SuppressFinalize(this);
+        foreach (var w in m_topLevelWidgets)
+        {
+            w.Dispose();
+        }
 
         Glfw.Terminate();
+        GC.SuppressFinalize(this);
     }
 }

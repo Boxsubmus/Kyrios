@@ -24,16 +24,18 @@ public class ColoredBox : Widget
             Color = m_currentColor,
             IsAntialias = true
         };
-        canvas.DrawRoundRect(new SKRoundRect(new SKRect(0, 0, Width, Height), 16), paint);
+        canvas.DrawRoundRect(new SKRoundRect(new SKRect(0, 0, Width, Height), 10), paint);
     }
 
     public override void OnMouseEnter()
     {
         m_currentColor = SKColors.Yellow;
+        Invalidate();
     }
 
     public override void OnMouseLeave()
     {
         m_currentColor = m_baseColor;
+        Invalidate();
     }
 }

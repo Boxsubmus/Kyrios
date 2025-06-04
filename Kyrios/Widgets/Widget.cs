@@ -1,93 +1,106 @@
 ﻿using GLFW;
+using Kyrios.Platform.Skia;
 using SkiaSharp;
 
 namespace Kyrios.Widgets;
 
-public class Widget
+public enum MouseEventType
+{
+    Down,
+    Up,
+    Move
+}
+
+public class Widget : IDisposable
 {
     public Widget? Parent { get; private set; }
-    public readonly List<Widget> m_children = new();
+    private readonly List<Widget> m_children = [];
 
     public int X = 0;
     public int Y = 0;
     public int Width;
     public int Height;
 
-    protected bool IsHovered { get; private set; } = false;
+    public bool Visible = true;
+
+    private bool IsHovered { get; set; } = false;
     private Widget? m_lastHovered = null;
+
+    private bool m_isDirty = false;
+    private bool m_hasDirtyDescendants = false;
+
+    // Cache
+    private SKSurface? m_cachedSurface;
+    private SKImage? m_cachedImage;
+    private int m_cachedWidth;
+    private int m_cachedHeight;
 
     // If top-level, owns a native window
     public bool IsTopLevel => Parent == null;
-    private GLFW.Window glfwWindow;
-    private GRContext grContext;
-    private SKSurface surface;
-
-    private const uint GL_RGBA8 = 0x8058;
+    private SkiaWindow? m_nativeWindow;
 
     public Widget(Widget? parent = null)
     {
         Parent = parent;
+        Update();
     }
 
     public void InitializeIfTopLevel()
     {
         if (!IsTopLevel) return;
 
-        glfwWindow = Glfw.CreateWindow(Width, Height, GetType().Name, GLFW.Monitor.None, GLFW.Window.None);
-        Glfw.MakeContextCurrent(glfwWindow);
-        Glfw.SwapInterval(1);
+        m_nativeWindow = new(Width, Height, GetType().Name);
 
-        var glInterface = GRGlInterface.Create();
-        grContext = GRContext.CreateGl(glInterface);
+        Glfw.SetWindowSizeCallback(m_nativeWindow.GLFWWindow, (window, width, height) =>
+        {
+            m_nativeWindow!.CreateFrameBuffer(width, height);
+
+            Update();
+        });
+
+        Glfw.SetCursorPositionCallback(m_nativeWindow.GLFWWindow, (window, xpos, ypos) =>
+        {
+            int mouseX = (int)xpos;
+            int mouseY = (int)ypos;
+
+            this.handleMouseMove(mouseX, mouseY);
+        });
+
+        Glfw.SetMouseButtonCallback(m_nativeWindow.GLFWWindow, (window, button, action, mods) =>
+        {
+            if (button == MouseButton.Left)
+            {
+                Glfw.GetCursorPosition(m_nativeWindow.GLFWWindow, out double xpos, out double ypos);
+
+                int mouseX = (int)xpos;
+                int mouseY = (int)ypos;
+
+                if (action == InputState.Press)
+                    this.dispatchMouseEvent(mouseX, mouseY, MouseEventType.Down);
+                else if (action == InputState.Release)
+                    this.dispatchMouseEvent(mouseX, mouseY, MouseEventType.Up);
+            }
+        });
     }
 
     public void UpdateAndRender()
     {
         if (!IsTopLevel) return;
 
-        Glfw.MakeContextCurrent(glfwWindow);
-        Glfw.GetFramebufferSize(glfwWindow, out int fbWidth, out int fbHeight);
+        Glfw.MakeContextCurrent(m_nativeWindow!.GLFWWindow);
+        Glfw.GetCursorPosition(m_nativeWindow!.GLFWWindow, out double mx, out double my);
 
-        Glfw.GetCursorPosition(glfwWindow, out double mx, out double my);
-
-        if (fbWidth != Width || fbHeight != Height)
-            Resize(fbWidth, fbHeight);
-
-        var fbInfo = new GRGlFramebufferInfo(0, GL_RGBA8);
-        var renderTarget = new GRBackendRenderTarget(fbWidth, fbHeight, 0, 8, fbInfo);
-
-        surface?.Dispose();
-        surface = SKSurface.Create(grContext, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
-
-        var canvas = surface.Canvas;
-        canvas.Clear(SKColors.White);
-
-        Paint(canvas);
-
-        canvas.Flush();
-        surface.Flush();
-
-        var newHovered = findHoveredWidget((int)mx, (int)my);
-
-        if (m_lastHovered != newHovered)
+        var canvas = m_nativeWindow!.Surface!.Canvas;
         {
-            m_lastHovered?.handleMouseLeave();
-            newHovered?.handleMouseEnter();
+            canvas.Clear(SKColors.White);
+
+            Paint(canvas);
+
+            canvas.Flush();
         }
+        m_nativeWindow!.Surface.Flush();
 
-        newHovered?.handleMouseMove((int)mx, (int)my);
-        m_lastHovered = newHovered;
-
-        Glfw.SwapBuffers(glfwWindow);
-    }
-
-    public void Shutdown()
-    {
-        if (!IsTopLevel) return;
-
-        surface?.Dispose();
-        grContext?.Dispose();
-        Glfw.DestroyWindow(glfwWindow);
+        Glfw.SwapBuffers(m_nativeWindow!.GLFWWindow);
     }
 
     public void Show()
@@ -124,10 +137,46 @@ public class Widget
 
     public void Paint(SKCanvas canvas)
     {
+        if (Width <= 0 || Height <= 0)
+            return;
+
         canvas.Save();
         canvas.Translate(X, Y);
 
-        OnPaint(canvas);
+        if (m_isDirty)
+        {
+            m_isDirty = false;
+
+            // We'll only recreate the surface when the widget is resized
+            // AND only if we're not a top level widget
+            if (!IsTopLevel)
+            {
+                if (m_cachedSurface == null || Width != m_cachedWidth || Height != m_cachedHeight)
+                {
+                    m_cachedSurface?.Dispose();
+
+                    m_cachedSurface = SKSurface.Create(new SKImageInfo(Width, Height));
+                    m_cachedWidth = Width;
+                    m_cachedHeight = Height;
+                }
+            }
+
+            var surface = (IsTopLevel) ? m_nativeWindow!.Surface : m_cachedSurface!;
+
+            var sc = surface.Canvas;
+            sc.Clear(SKColors.Transparent);
+            OnPaint(sc);
+
+            // We can recreate the image every paint, that's fine.
+            m_cachedImage?.Dispose();
+            m_cachedImage = surface.Snapshot();
+        }
+
+        // Draw the cached image to the real canvas
+        if (m_cachedImage != null)
+        {
+            canvas.DrawImage(m_cachedImage, 0, 0);
+        }
 
         foreach (var child in m_children)
         {
@@ -135,11 +184,43 @@ public class Widget
         }
 
         canvas.Restore();
+
+        m_hasDirtyDescendants = false;
     }
 
     public bool ShouldClose()
     {
-        return IsTopLevel && Glfw.WindowShouldClose(glfwWindow);
+        return IsTopLevel && Glfw.WindowShouldClose(m_nativeWindow!.GLFWWindow);
+    }
+
+    public void Invalidate()
+    {
+        if (m_isDirty) return;
+        m_isDirty = true;
+        Parent?.MarkChildDirty();
+    }
+
+    public void MarkChildDirty()
+    {
+        if (m_hasDirtyDescendants) return;
+        m_hasDirtyDescendants = true;
+        Parent?.MarkChildDirty();
+    }
+
+    public virtual void Dispose()
+    {
+        m_nativeWindow?.Dispose();
+        m_cachedSurface?.Dispose();
+
+        foreach (var child in m_children)
+            child.Dispose();
+
+        GC.SuppressFinalize(this);
+    }
+
+    public void Update()
+    {
+        Invalidate();
     }
 
     #region Events
@@ -155,6 +236,13 @@ public class Widget
     public virtual void OnMouseEnter() { }
     public virtual void OnMouseLeave() { }
     public virtual void OnMouseMove(int x, int y) { }
+    public virtual void OnMouseDown(int x, int y) { }
+    public virtual void OnMouseUp(int x, int y) { }
+
+    public bool HitTest(int x, int y)
+    {
+        return x >= 0 && y >= 0 && x < Width && y < Height;
+    }
 
     #endregion
 
@@ -197,7 +285,59 @@ public class Widget
 
     private void handleMouseMove(int x, int y)
     {
-        OnMouseMove(x - X, y - Y);
+        var newHovered = findHoveredWidget((int)x, (int)y);
+
+        if (m_lastHovered != newHovered)
+        {
+            m_lastHovered?.handleMouseLeave();
+            newHovered?.handleMouseEnter();
+        }
+
+        newHovered?.OnMouseMove((int)x - X, (int)y - Y);
+        m_lastHovered = newHovered;
+    }
+
+    private void dispatchMouseEvent(int mouseX, int mouseY, MouseEventType type)
+    {
+        foreach (var widget in m_children.Reverse<Widget>()) // top-most first
+        {
+            if (!widget.Visible)
+                continue;
+
+            if (widget.HitTest(mouseX - widget.X, mouseY - widget.Y))
+            {
+                switch (type)
+                {
+                    case MouseEventType.Move:
+                        widget.OnMouseMove(mouseX - widget.X, mouseY - widget.Y);
+                        break;
+                    case MouseEventType.Down:
+                        widget.OnMouseDown(mouseX - widget.X, mouseY - widget.Y);
+                        break;
+                    case MouseEventType.Up:
+                        widget.OnMouseUp(mouseX - widget.X, mouseY - widget.Y);
+                        break;
+                }
+                break; // stop at first hit
+            }
+        }
+    }
+
+    /// <summary>
+    /// Helper to find topmost widget under point
+    /// </summary>
+    private Widget? findTopMostWidgetAt(int x, int y)
+    {
+        // Reverse order so topmost drawn widget checked first
+        foreach (var child in m_children.AsEnumerable().Reverse())
+        {
+            if (!child.Visible)
+                continue;
+
+            if (child.HitTest(x - child.X, y - child.Y))
+                return child;
+        }
+        return null;
     }
 
     #endregion
