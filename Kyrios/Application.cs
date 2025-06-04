@@ -1,7 +1,21 @@
-﻿using GLFW;
+﻿using SDL2;
 using Kyrios.Widgets;
+using Kyrios.Platform.Skia;
 
 namespace Kyrios;
+
+internal static class WindowRegistry
+{
+    private static readonly Dictionary<uint, SkiaWindow> windows = new();
+
+    public static void Register(SkiaWindow window)
+    {
+        windows[window.WindowID] = window;
+    }
+
+    public static SkiaWindow? Get(uint id) =>
+        windows.TryGetValue(id, out var win) ? win : null;
+}
 
 public class Application : IDisposable
 {
@@ -9,13 +23,7 @@ public class Application : IDisposable
 
     public Application()
     {
-        Glfw.Init();
-
-        Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
-        Glfw.WindowHint(Hint.ContextVersionMajor, 3);
-        Glfw.WindowHint(Hint.ContextVersionMinor, 3);
-        Glfw.WindowHint(Hint.Doublebuffer, true);
-        Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
+        SDL.SDL_Init(SDL.SDL_INIT_VIDEO);
     }
 
     public void Run(params Widget[] widgets)
@@ -30,7 +38,7 @@ public class Application : IDisposable
 
         while (m_topLevelWidgets.Count > 0)
         {
-            Glfw.PollEvents();
+            pumpEvents();
 
             foreach (var w in m_topLevelWidgets.ToArray())
             {
@@ -45,6 +53,8 @@ public class Application : IDisposable
                     // Glfw.WaitEvents(); // <- This tells Glfw to wait until the user does something to actually update
                 }
             }
+
+            // SDL.SDL_Delay(16); // ~60fps
         }
     }
 
@@ -55,7 +65,26 @@ public class Application : IDisposable
             w.Dispose();
         }
 
-        Glfw.Terminate();
+        SDL.SDL_Quit();
         GC.SuppressFinalize(this);
+    }
+
+    private void pumpEvents()
+    {
+        while (SDL.SDL_PollEvent(out SDL.SDL_Event e) != 0)
+        {
+            uint id = e.type switch
+            {
+                SDL.SDL_EventType.SDL_MOUSEMOTION => e.motion.windowID,
+                SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN or SDL.SDL_EventType.SDL_MOUSEBUTTONUP => e.button.windowID,
+                SDL.SDL_EventType.SDL_WINDOWEVENT => e.window.windowID,
+                _ => 0
+            };
+
+            if (WindowRegistry.Get(id) is { } win)
+            {
+                win.ParentWidget.HandleEvent(e);
+            }
+        }
     }
 }

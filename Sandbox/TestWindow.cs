@@ -10,8 +10,12 @@ internal class TestWindow : MainWindow
 
     private SKTypeface m_defaultTypeface;
 
-    public TestWindow(string title = "") : base(1280, 720)
+    private int index;
+
+    public TestWindow(int i, string title = "") : base(1280, 720)
     {
+        index = i;
+
         m_defaultTypeface = SKTypeface.FromFamilyName("Segoe UI");
 
         AddChild(new Checkbox(), 8, 8);
@@ -25,9 +29,11 @@ internal class TestWindow : MainWindow
 
         canvas.Clear(new SKColor(40, 40, 40));
 
-        Update();
+        // Update();
 
-        Console.WriteLine(frame);
+        // Console.WriteLine(frame);
+
+        Console.WriteLine($"paint: {index}");
 
         frame++;
 

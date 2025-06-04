@@ -1,11 +1,11 @@
-﻿using GLFW;
-using SkiaSharp;
+﻿using SkiaSharp;
 using System.Runtime.InteropServices;
 
 namespace Kyrios.Platform.Skia;
 
 public static class SkiaHelper
 {
+    /*
     public static GRContext GenerateSkiaContext(Window nativeWindow)
     {
         var nativeContext = GetNativeContext(nativeWindow);
@@ -34,4 +34,5 @@ public static class SkiaHelper
 
         throw new PlatformNotSupportedException();
     }
+    */
 }

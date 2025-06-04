@@ -1,4 +1,5 @@
 ﻿using Kyrios;
+using Kyrios.Widgets;
 
 namespace Sandbox;
 
@@ -8,9 +9,15 @@ public static class Program
     {
         using var app = new Application();
 
-        var mainWindow = new TestWindow();
-        mainWindow.Show();
+        var windows = new List<MainWindow>();
+        for (int i = 0; i < 6; i++)
+        {
+            var mainWindow = new TestWindow(i);
+            mainWindow.Show();
 
-        app.Run(mainWindow);
+            windows.Add(mainWindow);
+        }
+
+        app.Run(windows.ToArray());
     }
 }

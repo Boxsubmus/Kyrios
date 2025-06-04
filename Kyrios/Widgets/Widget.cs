@@ -1,5 +1,5 @@
-﻿using GLFW;
-using Kyrios.Platform.Skia;
+﻿using Kyrios.Platform.Skia;
+using SDL2;
 using SkiaSharp;
 
 namespace Kyrios.Widgets;
@@ -49,48 +49,20 @@ public class Widget : IDisposable
     {
         if (!IsTopLevel) return;
 
-        m_nativeWindow = new(Width, Height, GetType().Name);
-
-        Glfw.SetWindowSizeCallback(m_nativeWindow.GLFWWindow, (window, width, height) =>
-        {
-            m_nativeWindow!.CreateFrameBuffer(width, height);
-
-            Update();
-        });
-
-        Glfw.SetCursorPositionCallback(m_nativeWindow.GLFWWindow, (window, xpos, ypos) =>
-        {
-            int mouseX = (int)xpos;
-            int mouseY = (int)ypos;
-
-            this.handleMouseMove(mouseX, mouseY);
-        });
-
-        Glfw.SetMouseButtonCallback(m_nativeWindow.GLFWWindow, (window, button, action, mods) =>
-        {
-            if (button == MouseButton.Left)
-            {
-                Glfw.GetCursorPosition(m_nativeWindow.GLFWWindow, out double xpos, out double ypos);
-
-                int mouseX = (int)xpos;
-                int mouseY = (int)ypos;
-
-                if (action == InputState.Press)
-                    this.dispatchMouseEvent(mouseX, mouseY, MouseEventType.Down);
-                else if (action == InputState.Release)
-                    this.dispatchMouseEvent(mouseX, mouseY, MouseEventType.Up);
-            }
-        });
+        m_nativeWindow = new(this, Width, Height, GetType().Name);
+        WindowRegistry.Register(m_nativeWindow);
     }
 
     public void UpdateAndRender()
     {
         if (!IsTopLevel) return;
 
-        Glfw.MakeContextCurrent(m_nativeWindow!.GLFWWindow);
-        Glfw.GetCursorPosition(m_nativeWindow!.GLFWWindow, out double mx, out double my);
+        // Lock texture to get pixel buffer
+        m_nativeWindow!.Lock();
 
-        var canvas = m_nativeWindow!.Surface!.Canvas;
+        var surface = m_nativeWindow!.Surface!;
+        var canvas = surface.Canvas;
+
         {
             canvas.Clear(SKColors.White);
 
@@ -98,9 +70,12 @@ public class Widget : IDisposable
 
             canvas.Flush();
         }
-        m_nativeWindow!.Surface.Flush();
 
-        Glfw.SwapBuffers(m_nativeWindow!.GLFWWindow);
+        canvas.Flush();
+
+        m_nativeWindow!.Unlock();
+
+        m_nativeWindow!.Present();
     }
 
     public void Show()
@@ -161,7 +136,7 @@ public class Widget : IDisposable
                 }
             }
 
-            var surface = (IsTopLevel) ? m_nativeWindow!.Surface : m_cachedSurface!;
+            var surface = (IsTopLevel) ? m_nativeWindow!.Surface! : m_cachedSurface!;
 
             var sc = surface.Canvas;
             sc.Clear(SKColors.Transparent);
@@ -190,21 +165,46 @@ public class Widget : IDisposable
 
     public bool ShouldClose()
     {
-        return IsTopLevel && Glfw.WindowShouldClose(m_nativeWindow!.GLFWWindow);
+        return IsTopLevel && m_nativeWindow!.ShouldClose;
     }
 
-    public void Invalidate()
+    public void HandleEvent(SDL.SDL_Event e)
     {
-        if (m_isDirty) return;
-        m_isDirty = true;
-        Parent?.MarkChildDirty();
-    }
+        switch (e.type)
+        {
+            case SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
+                dispatchMouseEvent(e.button.x, e.button.y, MouseEventType.Down);
+                break;
 
-    public void MarkChildDirty()
-    {
-        if (m_hasDirtyDescendants) return;
-        m_hasDirtyDescendants = true;
-        Parent?.MarkChildDirty();
+            case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+                dispatchMouseEvent(e.button.x, e.button.y, MouseEventType.Up);
+                break;
+
+            case SDL.SDL_EventType.SDL_MOUSEMOTION:
+                handleMouseMove(e.motion.x, e.motion.y);
+                break;
+
+            case SDL.SDL_EventType.SDL_WINDOWEVENT:
+
+                switch (e.window.windowEvent)
+                {
+                    case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED:
+                    {
+                        m_nativeWindow!.CreateFrameBuffer(e.window.data1, e.window.data2);
+
+                        Update();
+                    }
+                    break;
+
+                    case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_CLOSE:
+                    {
+                        m_nativeWindow!.ShouldClose = true;
+                    }
+                    break;
+                }
+
+                break;
+        }
     }
 
     public virtual void Dispose()
@@ -220,7 +220,12 @@ public class Widget : IDisposable
 
     public void Update()
     {
-        Invalidate();
+        invalidate();
+    }
+
+    public bool HitTest(int x, int y)
+    {
+        return x >= 0 && y >= 0 && x < Width && y < Height;
     }
 
     #region Events
@@ -239,14 +244,23 @@ public class Widget : IDisposable
     public virtual void OnMouseDown(int x, int y) { }
     public virtual void OnMouseUp(int x, int y) { }
 
-    public bool HitTest(int x, int y)
-    {
-        return x >= 0 && y >= 0 && x < Width && y < Height;
-    }
-
     #endregion
 
     #region Private Methods
+
+    private void invalidate()
+    {
+        if (m_isDirty) return;
+        m_isDirty = true;
+        Parent?.markChildDirty();
+    }
+
+    private void markChildDirty()
+    {
+        if (m_hasDirtyDescendants) return;
+        m_hasDirtyDescendants = true;
+        Parent?.markChildDirty();
+    }
 
     private Widget? findHoveredWidget(int x, int y)
     {

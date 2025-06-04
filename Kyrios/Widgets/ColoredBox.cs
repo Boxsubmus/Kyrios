@@ -30,12 +30,12 @@ public class ColoredBox : Widget
     public override void OnMouseEnter()
     {
         m_currentColor = SKColors.Yellow;
-        Invalidate();
+        Update();
     }
 
     public override void OnMouseLeave()
     {
         m_currentColor = m_baseColor;
-        Invalidate();
+        Update();
     }
 }
