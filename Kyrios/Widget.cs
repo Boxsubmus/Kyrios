@@ -29,6 +29,9 @@ public class Widget : IDisposable
     private bool m_isDirty = false;
     private bool m_hasDirtyDescendants = false;
 
+    // Cursor
+    public MouseCursor.CursorType? CursorShape = null;
+    
     // Cache
     private SKSurface? m_cachedSurface;
     private SKImage? m_cachedImage;
@@ -42,6 +45,7 @@ public class Widget : IDisposable
     public Widget(Widget? parent = null)
     {
         Parent = parent;
+        parent?.AddChild(this);
         Update();
     }
 
@@ -78,8 +82,16 @@ public class Widget : IDisposable
         m_nativeWindow!.Present();
     }
 
+    /// <summary>
+    /// Shows top level widgets, will automatically show any children along with it.
+    /// </summary>
     public void Show()
     {
+        if (IsTopLevel)
+        {
+            Application.Instance!.TopLevelWidgets.Add(this);
+            InitializeIfTopLevel();
+        }
     }
 
     public void AddChild(Widget child, int x = 0, int y = 0)
@@ -108,6 +120,14 @@ public class Widget : IDisposable
         Height = height;
 
         OnResize(width, height);
+    }
+
+    public void SetRect(int x, int y, int width, int height)
+    {
+        this.X = x;
+        this.Y = y;
+        Width = width;
+        Height = height;
     }
 
     public void Paint(SKCanvas canvas)
@@ -191,6 +211,7 @@ public class Widget : IDisposable
                     case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED:
                     {
                         m_nativeWindow!.CreateFrameBuffer(e.window.data1, e.window.data2);
+                        Resize(e.window.data1, e.window.data2);
 
                         Update();
                     }
@@ -225,7 +246,7 @@ public class Widget : IDisposable
 
     public bool HitTest(int x, int y)
     {
-        return x >= 0 && y >= 0 && x < Width && y < Height;
+        return Visible && (x >= 0 && y >= 0 && x < Width && y < Height);
     }
 
     #region Events
@@ -300,6 +321,13 @@ public class Widget : IDisposable
     private void handleMouseMove(int x, int y)
     {
         var newHovered = findHoveredWidget((int)x, (int)y);
+        
+        var newCursorShape = newHovered?.CursorShape;
+
+        if (newCursorShape.HasValue)
+        {
+            MouseCursor.Set(newCursorShape.Value);
+        }
 
         if (m_lastHovered != newHovered)
         {

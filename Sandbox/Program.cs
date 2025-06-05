@@ -9,17 +9,15 @@ public static class Program
     {
         using var app = new Application();
 
-        Cache.Init();
+        var mainWindow = new TestWindow();
+        mainWindow.SetTitle("Sandbox");
+        mainWindow.Resize(300, 200);
+        mainWindow.Show();
 
-        var windows = new List<MainWindow>();
-        for (int i = 0; i < 1; i++)
-        {
-            var mainWindow = new TestWindow(i);
-            mainWindow.Show();
+        var button = new PushButton(mainWindow);
+        button.SetRect(40, 40, 200, 30);
+        button.Label = "Push Me!";
 
-            windows.Add(mainWindow);
-        }
-
-        app.Run(windows.ToArray());
+        app.Run();
     }
 }

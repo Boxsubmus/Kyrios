@@ -4,9 +4,15 @@ namespace Kyrios.Widgets;
 
 public class MainWindow : Widget
 {
-    public MainWindow(int width = 100, int height = 100) : base()
+    public MainWindow(Widget? parent = null) : base(parent)
     {
-        Width = width;
-        Height = height;
+    }
+
+    /// <summary>
+    /// Sets the title of the window.
+    /// </summary>
+    public void SetTitle(string title)
+    {
+        
     }
 }

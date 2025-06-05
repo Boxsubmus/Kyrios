@@ -11,10 +11,8 @@ internal class TestWindow : MainWindow
 
     private int index;
 
-    public TestWindow(int i, string title = "") : base(1280, 720)
+    public TestWindow(Widget? parent = null) : base(parent)
     {
-        index = i;
-
         AddChild(
             new Checkbox
             {

@@ -19,33 +19,43 @@ internal static class WindowRegistry
 
 public class Application : IDisposable
 {
-    private readonly List<Widget> m_topLevelWidgets = [];
+    internal static Application? Instance { get; private set; } = null;
+    
+    internal readonly List<Widget> TopLevelWidgets = [];
 
     public Application()
     {
+        if (Instance != null)
+        {
+            throw new InvalidOperationException("Application already exists.");
+        }
+        Instance = this;
+        
         SDL.SDL_Init(SDL.SDL_INIT_VIDEO);
     }
 
-    public void Run(params Widget[] widgets)
+    public void Run()
     {
+        /*
         foreach (var w in widgets)
         {
             if (w.Parent != null) continue;
             
-            m_topLevelWidgets.Add(w);
+            TopLevelWidgets.Add(w);
             w.InitializeIfTopLevel();
         }
+        */
 
-        while (m_topLevelWidgets.Count > 0)
+        while (TopLevelWidgets.Count > 0)
         {
             pumpEvents();
 
-            foreach (var w in m_topLevelWidgets.ToArray())
+            foreach (var w in TopLevelWidgets.ToArray())
             {
                 if (w.ShouldClose())
                 {
                     w.Dispose();
-                    m_topLevelWidgets.Remove(w);
+                    TopLevelWidgets.Remove(w);
                 }
                 else
                 {
@@ -60,10 +70,12 @@ public class Application : IDisposable
 
     public void Dispose()
     {
-        foreach (var w in m_topLevelWidgets)
+        foreach (var w in TopLevelWidgets)
         {
             w.Dispose();
         }
+        
+        MouseCursor.Cleanup();
 
         SDL.SDL_Quit();
         GC.SuppressFinalize(this);

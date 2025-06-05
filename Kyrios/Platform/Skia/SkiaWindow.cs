@@ -22,6 +22,9 @@ internal class SkiaWindow
     private IntPtr m_pixels;
     private int m_pitch;
 
+    private MouseCursor.CursorType? m_currentCursor = null;
+    private MouseCursor.CursorType? m_lastCursorShape = null;
+
     public SkiaWindow(Widget parent, int width, int height, string title)
     {
         ParentWidget = parent;
